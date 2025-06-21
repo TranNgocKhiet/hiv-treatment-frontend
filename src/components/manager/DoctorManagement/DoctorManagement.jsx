@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Space, Button, message, Tag, Row, Col, Card, Statistic, Spin, Select, Input } from 'antd';
-import { UserOutlined, CalendarOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Table, Space, Button, message, Tag, Row, Col, Select, Input } from 'antd';
 import { fetchAllDoctorsAPI, fetchDoctorByIdAPI, updateDoctorProfileAPI, fetchDoctorStatisticsAPI } from '../../../services/api.service';
 import UpdateDoctorModal from './UpdateDoctorModal';
 import DoctorProfileDetail from './DoctorProfileDetail';
@@ -173,35 +172,9 @@ const DoctorManagement = () => {
 
     return (
         <div className="doctor-management">
-            <Row gutter={[16, 16]} className="dashboard-stats">
-                <Col xs={24} sm={12} lg={8}>
-                    <Card>
-                        <Statistic
-                            title="Tổng số bác sĩ"
-                            value={doctors.length}
-                            prefix={<UserOutlined />}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={8}>
-                    <Card>
-                        <Statistic
-                            title="Đang làm việc"
-                            value={doctors.filter(d => d.status === DoctorStatus.ACTIVE).length}
-                            prefix={<CalendarOutlined />}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={8}>
-                    <Card>
-                        <Statistic
-                            title="Nghỉ phép"
-                            value={doctors.filter(d => d.status === DoctorStatus.ON_LEAVE).length}
-                            prefix={<FileTextOutlined />}
-                        />
-                    </Card>
-                </Col>
-            </Row>
+            <div className="doctor-management-header">
+                <h1 className="doctor-list-title">Danh sách bác sĩ</h1>
+            </div>
 
             {/* Bộ lọc bác sĩ và search */}
             <Row gutter={16} style={{ marginBottom: 16 }} align="middle">

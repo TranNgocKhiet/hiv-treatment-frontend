@@ -1,0 +1,63 @@
+.lab-technician-profile-modal .ant-modal-body {
+    padding: 24px;
+}
+
+.profile-header {
+    display: flex;
+    margin-bottom: 24px;
+    align-items: center;
+}
+
+.avatar-section {
+    margin-right: 24px;
+}
+
+.lab-technician-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+}
+
+.avatar-placeholder {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background-color: #f0f2f5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 48px;
+    color: #bfbfbf;
+}
+
+.basic-info h2 {
+    margin-bottom: 4px;
+    font-size: 24px;
+}
+
+.basic-info p {
+    margin-bottom: 8px;
+    color: #595959;
+}
+
+.statistics-section {
+    margin-bottom: 24px;
+}
+
+.lab-technician-details {
+    margin-top: 24px;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .profile-header {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .avatar-section {
+        margin-right: 0;
+        margin-bottom: 16px;
+    }
+} 

@@ -1,14 +1,14 @@
-.doctor-management {
+.lab-technician-management {
     padding: 24px;
 }
 
-.doctor-management-header {
+.lab-technician-management-header {
     margin-bottom: 24px;
     text-align: center;
     position: relative;
 }
 
-.doctor-list-title {
+.lab-technician-list-title {
     font-size: 32px;
     font-weight: 700;
     color: #1890ff;
@@ -18,7 +18,7 @@
     padding-bottom: 10px;
 }
 
-.doctor-list-title::after {
+.lab-technician-list-title::after {
     content: '';
     position: absolute;
     bottom: 0;
@@ -30,19 +30,15 @@
     border-radius: 2px;
 }
 
-.dashboard-stats {
-    margin-bottom: 24px;
-}
-
-.doctor-table {
+.lab-technician-table {
     background: white;
     padding: 24px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-/* Doctor Profile Modal Styles */
-.doctor-profile-modal .ant-modal-body {
+/* Lab Technician Profile Modal Styles */
+.lab-technician-profile-modal .ant-modal-body {
     padding: 24px;
 }
 
@@ -53,21 +49,13 @@
     min-height: 200px;
 }
 
-.statistics-section {
-    margin: 24px 0;
-}
-
 /* Responsive styles */
 @media (max-width: 768px) {
-    .dashboard-stats .ant-col {
-        margin-bottom: 16px;
-    }
-    
-    .doctor-list-title {
+    .lab-technician-list-title {
         font-size: 28px;
     }
 }
 
 .ant-table-wrapper {
     overflow-x: auto;
-}
+} 

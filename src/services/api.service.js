@@ -215,25 +215,49 @@ const fetchAllRegimensAPI = () => {
     const URL_BACKEND = '/api/regimen'
     return axios.get(URL_BACKEND)
 }
+
+// API functions for Lab Technicians
+const fetchAllLabTechniciansAPI = () => {
+    const URL_BACKEND = '/api/lab-technicians'
+    return axios.get(URL_BACKEND)
+}
+
+// Lấy thông tin chi tiết của một kỹ thuật viên
+const fetchLabTechnicianByIdAPI = (labTechnicianId) => {
+    const URL_BACKEND = `/api/lab-technicians/${labTechnicianId}`;
+    return axios.get(URL_BACKEND);
+}
+
+// Cập nhật thông tin kỹ thuật viên
+const updateLabTechnicianProfileAPI = (labTechnicianId, profileData) => {
+    const URL_BACKEND = `/api/lab-technicians/${labTechnicianId}`;
+    return axios.put(URL_BACKEND, profileData);
+}
+
+// Lấy thống kê công việc của kỹ thuật viên
+const fetchLabTechnicianStatisticsAPI = (labTechnicianId) => {
+    const URL_BACKEND = `/api/lab-technicians/${labTechnicianId}/statistics`;
+    return axios.get(URL_BACKEND);
+}
+
 export {
     loginAPI,
     registerAPI,
     bookingAPI,
+    fetchAllScheduleAPI,
+    registerScheduleAPI,
+    initiatePaymentAPI,
     createAccountAPI,
+    handlePaymentCallbackAPI,
+    fetchAllPatientScheduleAPI,
     fetchAccountByRoleAPI,
-    deleteAccountAPI,
     updateAccountAPI,
+    deleteAccountAPI,
     fetchDoctorProfileAPI,
     fetchScheduleAPI,
-    fetchAccountAPI,
-    fetchAllPatientScheduleAPI,
     fetchAvailableSlotAPI,
-    fetchAllScheduleAPI,
-    initiatePaymentAPI,
-    registerScheduleAPI,
-    handlePaymentCallbackAPI,
+    fetchAccountAPI,
     logoutAPI,
-
     fetchAllDoctorsAPI,
     fetchDoctorByIdAPI,
     updateDoctorProfileAPI,
@@ -246,8 +270,11 @@ export {
     deleteTestResultAPI,
     createTestResultAPI,
     updateTestResultAPI,
-
     fetchScheduleByDoctorIdAPI,
     fetchRegimensByDoctorIdAPI,
-    fetchAllRegimensAPI
+    fetchAllRegimensAPI,
+    fetchAllLabTechniciansAPI,
+    fetchLabTechnicianByIdAPI,
+    updateLabTechnicianProfileAPI,
+    fetchLabTechnicianStatisticsAPI
 }
