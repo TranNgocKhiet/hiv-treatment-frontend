@@ -9,7 +9,7 @@ import moment from 'moment';
 import './CustomButtons.css';
 import './Schedule.css';
 import { ScheduleStatus, StatusMapping } from '../../../types/schedule.types';
-import { getAllSchedulesAPI, updateScheduleAPI, deleteScheduleAPI, createScheduleAPI } from '../../../services/api.service';
+import { getAllSchedulesAPI, updateScheduleAPI, deleteScheduleAPI, createScheduleAPI, checkBackendConnection } from '../../../services/api.service';
 
 const ManagerSchedule = () => {
     const [showForm, setShowForm] = useState(false);
@@ -22,6 +22,7 @@ const ManagerSchedule = () => {
     const [loading, setLoading] = useState(true);
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [error, setError] = useState(null);
+    const [backendConnected, setBackendConnected] = useState(true);
 
     // Xóa bất kỳ dữ liệu lịch nào có thể được lưu trong localStorage
     useEffect(() => {
@@ -46,7 +47,23 @@ const ManagerSchedule = () => {
             }
         });
         
-        fetchSchedules();
+        // Kiểm tra kết nối đến backend
+        checkBackendConnection()
+            .then(result => {
+                setBackendConnected(result.success);
+                if (!result.success) {
+                    setError('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng và làm mới trang.');
+                    showToast('Không thể kết nối đến server', 'danger');
+                } else {
+                    fetchSchedules();
+                }
+            })
+            .catch(err => {
+                console.error('Error checking backend connection:', err);
+                setBackendConnected(false);
+                setError('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng và làm mới trang.');
+                showToast('Không thể kết nối đến server', 'danger');
+            });
     }, []);
 
     const fetchSchedules = async () => {
@@ -139,8 +156,12 @@ const ManagerSchedule = () => {
 
     const handleScheduleSelect = (schedule) => {
         console.log('Selected schedule:', schedule);
-        setSelectedSchedule(schedule);
-        setShowDetail(true);
+        
+        // Sử dụng setTimeout để tránh FlushSync error
+        setTimeout(() => {
+            setSelectedSchedule(schedule);
+            setShowDetail(true);
+        }, 0);
     };
 
     const handleScheduleCreated = async (newSchedule) => {
@@ -226,14 +247,27 @@ const ManagerSchedule = () => {
     // Hàm chuẩn bị dữ liệu lịch để gửi đến API
     const prepareScheduleData = (schedule) => {
         // Chuyển đổi từ dữ liệu form sang định dạng API
+        console.log('Preparing schedule data for API:', schedule);
+        
+        // Xác định status dựa trên loại thao tác (tạo mới hoặc cập nhật)
+        let status;
+        if (schedule.original_status) {
+            // Nếu đang cập nhật, sử dụng trạng thái từ form hoặc giữ nguyên trạng thái gốc
+            status = schedule.status ? (StatusMapping[schedule.status] || schedule.status) : schedule.original_status;
+        } else {
+            // Nếu đang tạo mới, đặt trạng thái là "Trống"
+            status = 'Trống';
+        }
+        
         return {
-            type: null, // Manager tạo lịch trống với type=null
-            roomCode: schedule.roomCode || Math.floor(Math.random() * 5 + 1) * 100 + Math.floor(Math.random() * 10), // Sử dụng roomCode từ form hoặc tạo mã phòng ngẫu nhiên (100-599)
+            type: schedule.type !== undefined ? schedule.type : null,
+            roomCode: schedule.roomCode, // Sử dụng roomCode từ form
             date: schedule.date, // Giữ nguyên định dạng YYYY-MM-DD
             slot: schedule.slot, // Sử dụng slot từ form (định dạng HH:mm:ss)
             doctorId: parseInt(schedule.doctorId),
-            status: 'Trống', // Đặt trạng thái là "Trống" theo yêu cầu của BE
-            patient_id: null // Thêm patient_id: null theo schema DB
+            status: status,
+            patient_id: schedule.patient_id !== undefined ? schedule.patient_id : null,
+            shiftType: schedule.shiftType || null // Thêm thông tin ca làm việc (nếu có)
         };
     };
 
@@ -285,11 +319,20 @@ const ManagerSchedule = () => {
             const type = schedule.type || null;
             const roomCode = schedule.roomCode || schedule.room_code || '100';
             
+            // Lấy thông tin ca làm việc (nếu có)
+            const shiftType = schedule.shiftType || null;
+            
             // Định dạng hiển thị khung giờ
             const slotDisplay = slot ? slot.substring(0, 5) : '08:00';
             
             // Tạo title với thông tin đầy đủ hơn
-            const title = `${doctorName} - ${slotDisplay} - P.${roomCode}`;
+            let title = `${doctorName} - ${slotDisplay} - P.${roomCode}`;
+            
+            // Thêm thông tin ca làm việc vào title nếu có
+            if (shiftType) {
+                const shiftName = shiftType === 'morning' ? 'Ca sáng' : 'Ca chiều';
+                title = `${doctorName} - ${shiftName} - ${slotDisplay} - P.${roomCode}`;
+            }
             
             return {
                 id: id,
@@ -301,7 +344,8 @@ const ManagerSchedule = () => {
                 type: type,
                 roomCode: roomCode,
                 slot: slot,
-                original_status: schedule.status // Lưu trữ status nguyên bản từ BE
+                original_status: schedule.status, // Lưu trữ status nguyên bản từ BE
+                shiftType: shiftType // Thêm thông tin ca làm việc
             };
         } catch (error) {
             console.error('Error formatting schedule:', error, schedule);
@@ -311,47 +355,85 @@ const ManagerSchedule = () => {
 
     const handleScheduleUpdate = async (updatedSchedule) => {
         try {
+            // Kiểm tra kết nối trước khi cập nhật
+            const connectionCheck = await checkBackendConnection();
+            if (!connectionCheck.success) {
+                console.error('Backend connection failed before update');
+                setTimeout(() => {
+                    showToast('Không thể kết nối đến server, vui lòng kiểm tra kết nối mạng', 'danger');
+                    
+                    // Vẫn cập nhật UI với dữ liệu đã nhập để không mất thông tin người dùng đã nhập
+                    setSchedules(prevSchedules => 
+                        prevSchedules.map(schedule => 
+                            schedule.id === updatedSchedule.id ? updatedSchedule : schedule
+                        )
+                    );
+                }, 0);
+                return;
+            }
+            
             // Chuẩn bị dữ liệu để gửi đến API
             const scheduleData = prepareScheduleData(updatedSchedule);
             
             // Gọi API để cập nhật lịch
-            console.log('Updating schedule:', updatedSchedule);
+            console.log('Updating schedule with room code:', updatedSchedule.roomCode);
+            console.log('Data prepared for API:', scheduleData);
+            
             const response = await updateScheduleAPI(updatedSchedule.id, scheduleData);
             console.log('Schedule update response:', response);
             
             if (response && response.data) {
                 console.log('Schedule updated successfully:', response.data);
+                console.log('Updated room code in response:', response.data.roomCode || response.data.room_code);
                 
                 // Nếu API thành công, cập nhật state với dữ liệu từ API
                 const formattedUpdatedSchedule = formatScheduleFromAPI(response.data);
-                setSchedules(prevSchedules => 
-                    prevSchedules.map(schedule => 
-                        schedule.id === updatedSchedule.id ? formattedUpdatedSchedule : schedule
-                    )
-                );
                 
-                showToast('Cập nhật lịch thành công!', 'success');
+                // Sử dụng setTimeout để tránh FlushSync error
+                setTimeout(() => {
+                    setSchedules(prevSchedules => 
+                        prevSchedules.map(schedule => 
+                            schedule.id === updatedSchedule.id ? formattedUpdatedSchedule : schedule
+                        )
+                    );
+                    
+                    showToast('Cập nhật lịch thành công!', 'success');
+                    
+                    // Làm mới dữ liệu từ server sau khi cập nhật
+                    setTimeout(() => {
+                        console.log('Refreshing schedule data from server after update');
+                        fetchSchedules();
+                    }, 500);
+                }, 0);
             } else {
                 console.warn('API returned success but no data');
-                showToast('Không thể cập nhật lịch, vui lòng thử lại sau', 'warning');
                 
-                // Nếu API không trả về dữ liệu, vẫn cập nhật UI với dữ liệu đã nhập
+                // Sử dụng setTimeout để tránh FlushSync error
+                setTimeout(() => {
+                    showToast('Không thể cập nhật lịch, vui lòng thử lại sau', 'warning');
+                    
+                    // Nếu API không trả về dữ liệu, vẫn cập nhật UI với dữ liệu đã nhập
+                    setSchedules(prevSchedules => 
+                        prevSchedules.map(schedule => 
+                            schedule.id === updatedSchedule.id ? updatedSchedule : schedule
+                        )
+                    );
+                }, 0);
+            }
+        } catch (error) {
+            console.error('Error updating schedule:', error);
+            
+            // Sử dụng setTimeout để tránh FlushSync error
+            setTimeout(() => {
+                showToast('Không thể kết nối đến server, vui lòng thử lại sau', 'danger');
+                
+                // Nếu API gặp lỗi, vẫn cập nhật UI với dữ liệu đã nhập
                 setSchedules(prevSchedules => 
                     prevSchedules.map(schedule => 
                         schedule.id === updatedSchedule.id ? updatedSchedule : schedule
                     )
                 );
-            }
-        } catch (error) {
-            console.error('Error updating schedule:', error);
-            showToast('Không thể kết nối đến server, vui lòng thử lại sau', 'danger');
-            
-            // Nếu API gặp lỗi, vẫn cập nhật UI với dữ liệu đã nhập
-            setSchedules(prevSchedules => 
-                prevSchedules.map(schedule => 
-            schedule.id === updatedSchedule.id ? updatedSchedule : schedule
-                )
-            );
+            }, 0);
         }
     };
 
@@ -446,43 +528,48 @@ const ManagerSchedule = () => {
     };
 
     const handleRefreshData = () => {
-        // Xóa tất cả dữ liệu trong localStorage và sessionStorage liên quan đến calendar
-        try {
-            const localStorageKeys = Object.keys(localStorage);
-            localStorageKeys.forEach(key => {
-                if (key.includes('fullcalendar') || key.includes('fc-') || key.includes('calendar') || 
-                    key.includes('event') || key.includes('schedule')) {
-                    console.log('Removing from localStorage:', key);
-                    localStorage.removeItem(key);
-                }
-            });
-            
-            const sessionStorageKeys = Object.keys(sessionStorage);
-            sessionStorageKeys.forEach(key => {
-                if (key.includes('fullcalendar') || key.includes('fc-') || key.includes('calendar') || 
-                    key.includes('event') || key.includes('schedule')) {
-                    console.log('Removing from sessionStorage:', key);
-                    sessionStorage.removeItem(key);
-                }
-            });
-            
-            // Xóa các key cụ thể
-            localStorage.removeItem('fc-event-sources');
-            localStorage.removeItem('fc-view-state');
-            sessionStorage.removeItem('fc-event-sources');
-            sessionStorage.removeItem('fc-view-state');
-        } catch (error) {
-            console.error('Error clearing storage:', error);
-        }
+        // Sử dụng setTimeout để tránh FlushSync error
+        setTimeout(() => {
+            // Xóa tất cả dữ liệu trong localStorage và sessionStorage liên quan đến calendar
+            try {
+                const localStorageKeys = Object.keys(localStorage);
+                localStorageKeys.forEach(key => {
+                    if (key.includes('fullcalendar') || key.includes('fc-') || key.includes('calendar') || 
+                        key.includes('event') || key.includes('schedule')) {
+                        console.log('Removing from localStorage:', key);
+                        localStorage.removeItem(key);
+                    }
+                });
+                
+                const sessionStorageKeys = Object.keys(sessionStorage);
+                sessionStorageKeys.forEach(key => {
+                    if (key.includes('fullcalendar') || key.includes('fc-') || key.includes('calendar') || 
+                        key.includes('event') || key.includes('schedule')) {
+                        console.log('Removing from sessionStorage:', key);
+                        sessionStorage.removeItem(key);
+                    }
+                });
+                
+                // Xóa các key cụ thể
+                localStorage.removeItem('fc-event-sources');
+                localStorage.removeItem('fc-view-state');
+                sessionStorage.removeItem('fc-event-sources');
+                sessionStorage.removeItem('fc-view-state');
+            } catch (error) {
+                console.error('Error clearing storage:', error);
+            }
+        }, 0);
         
-        // Reset state
-        setSchedules([]);
-        setSelectedSchedule(null);
-        setSelectedDate(null);
-        setShowDetail(false);
-        setShowForm(false);
-        setLoading(true);
-        setError(null);
+        // Reset state - sử dụng setTimeout để tránh FlushSync error
+        setTimeout(() => {
+            setSchedules([]);
+            setSelectedSchedule(null);
+            setSelectedDate(null);
+            setShowDetail(false);
+            setShowForm(false);
+            setLoading(true);
+            setError(null);
+        }, 0);
         
         // Đặt một flag để tránh vòng lặp cập nhật vô hạn
         const refreshTimestamp = Date.now();
